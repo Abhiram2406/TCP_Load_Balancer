@@ -3,27 +3,47 @@
 #include "net/TcpConnection.hpp"
 
 void function_client(int client_fd) {
+    sockaddr_in backend_address{};
+    backend_address.sin_family=AF_INET;
+    backend_address.sin_port=htons(9000);
+    inet_pton(AF_INET,"127.0.0.1",&backend_address.sin_addr);
+
+    int backend_fd=socket(AF_INET,SOCK_STREAM,0);
+    if(backend_fd<0) {
+        perror("backend_socket");
+        return;
+    }
+    if(connect(backend_fd,(sockaddr*)&backend_address,sizeof(backend_address))==-1) {
+        perror("backend_connection");
+        close(backend_fd);
+        return;
+    }
+    TcpConnection backend(backend_fd);
     TcpConnection client(client_fd);
 
     char buffer[1024];
 
-    ssize_t received_data=client.receive_data(buffer,sizeof(buffer));
+    ssize_t received_data_client=client.receive_data(buffer,sizeof(buffer));
+    ssize_t send_data_backend=backend.send_data(buffer,received_data_client);
 
-    if(received_data<0) {
+    if(received_data_client<0 || send_data_backend<0) {
         perror("receive");
         return;
     }
 
-    cout<<"Received data from Client: ";
-    cout.write(buffer,received_data);
+    cout<<"Received data from Client: "<<endl;
+    cout<<"Sent data to backend: "<<endl;
+    cout.write(buffer,received_data_client);
+    
+    ssize_t receive_data_backend=backend.receive_data(buffer,sizeof(buffer));
+    ssize_t send_data_client=client.send_data(buffer,received_data_client);
 
-    ssize_t send_data=client.send_data(buffer,received_data);
-
-    if(send_data<0) {
+    if(send_data_client<0 || receive_data_backend<0) {
         perror("send");
         return;
     }
-    cout<<"Data Sent to client: "<<endl;
+    cout<<"Data received from backend"<<endl;
+    cout<<"Data Sent to client"<<endl;
 }
 
 int main() {
@@ -33,6 +53,7 @@ int main() {
     address.sin_family=AF_INET;
     address.sin_port=htons(2424);
     address.sin_addr.s_addr=INADDR_ANY;
+
     
     if(server.bind_to_port((sockaddr*)&address,sizeof(address))==-1) {
         perror("bind");
