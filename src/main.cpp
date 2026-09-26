@@ -23,27 +23,35 @@ void function_client(int client_fd) {
 
     char buffer[1024];
 
-    ssize_t received_data_client=client.receive_data(buffer,sizeof(buffer));
-    ssize_t send_data_backend=backend.send_data(buffer,received_data_client);
+    while(true) {
+        ssize_t received_data_client=client.receive_data(buffer,sizeof(buffer));
+        if(received_data_client<=0) {
+            break;
+        }
+        ssize_t send_data_backend=backend.send_data(buffer,received_data_client);
 
-    if(received_data_client<0 || send_data_backend<0) {
-        perror("receive");
-        return;
+        if(send_data_backend<0) {
+            perror("receive");
+            return;
+        }
+
+        cout<<"Received data from Client: "<<endl;
+        cout<<"Sent data to backend: "<<endl;
+        cout.write(buffer,received_data_client);
+        
+        ssize_t receive_data_backend=backend.receive_data(buffer,sizeof(buffer));
+        if(receive_data_backend<=0) {
+            break;
+        }
+        ssize_t send_data_client=client.send_data(buffer,receive_data_backend);
+
+        if(send_data_client<0) {
+            perror("send");
+            return;
+        }
+        cout<<"Data received from backend"<<endl;
+        cout<<"Data Sent to client"<<endl;
     }
-
-    cout<<"Received data from Client: "<<endl;
-    cout<<"Sent data to backend: "<<endl;
-    cout.write(buffer,received_data_client);
-    
-    ssize_t receive_data_backend=backend.receive_data(buffer,sizeof(buffer));
-    ssize_t send_data_client=client.send_data(buffer,received_data_client);
-
-    if(send_data_client<0 || receive_data_backend<0) {
-        perror("send");
-        return;
-    }
-    cout<<"Data received from backend"<<endl;
-    cout<<"Data Sent to client"<<endl;
 }
 
 int main() {
