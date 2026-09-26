@@ -5,4 +5,8 @@ project(LoadBalancer)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(load_balancer src/main.cpp)
+add_executable(load_balancer
+    src/main.cpp
+    src/net/TcpConnection.cpp
+    src/net/TcpListener.cpp
+)

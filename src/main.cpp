@@ -1,50 +1,48 @@
 #include "common.hpp"
+#include "net/TcpListener.hpp"
+#include "net/TcpConnection.hpp"
 
 void function_client(int client_fd) {
+    TcpConnection client(client_fd);
 
     char buffer[1024];
 
-    ssize_t received_data=recv(client_fd,buffer,sizeof(buffer),0);
+    ssize_t received_data=client.receive_data(buffer,sizeof(buffer));
 
     if(received_data<0) {
         perror("receive");
-        close(client_fd);
         return;
     }
 
-    cout<<"Received";
+    cout<<"Received data from Client: ";
     cout.write(buffer,received_data);
 
-    ssize_t send_data=send(client_fd,buffer,received_data,0);
+    ssize_t send_data=client.send_data(buffer,received_data);
 
     if(send_data<0) {
         perror("send");
-        close(client_fd);
         return;
     }
-    cout<<"Data Sent to client"<<endl;
-    close(client_fd);
+    cout<<"Data Sent to client: "<<endl;
 }
 
 int main() {
-    int server_fd=socket(AF_INET,SOCK_STREAM,0);
+    TcpListener server;
     
     sockaddr_in address{};
     address.sin_family=AF_INET;
     address.sin_port=htons(2424);
     address.sin_addr.s_addr=INADDR_ANY;
-
-    if(bind(server_fd,(sockaddr*)&address,sizeof(address))==-1) {
+    
+    if(server.bind_to_port((sockaddr*)&address,sizeof(address))==-1) {
         perror("bind");
-        close(server_fd);
         return 1;
     }
 
-    cout<<"Server bound to"<<ntohs(address.sin_port)<<endl;
+    cout<<"Server bound to port "<<ntohs(address.sin_port)<<endl;
 
-    if(listen(server_fd,2)==-1) {
+    if(server.listen_on_port(2)==-1) {
         perror("listen");
-        close(server_fd);
         return 1;
     }
 
@@ -54,11 +52,10 @@ int main() {
         sockaddr_in client_address{};
         socklen_t client_address_length=sizeof(client_address);
 
-        int client_fd=accept(server_fd,(sockaddr*)&client_address,&client_address_length);
+        int client_fd=server.accept_client((sockaddr*)&client_address,&client_address_length);
 
         if(client_fd==-1) {
             perror("accept");
-            close(server_fd);
             continue;
         }
 
