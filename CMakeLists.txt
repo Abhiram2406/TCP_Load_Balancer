@@ -9,4 +9,6 @@ add_executable(load_balancer
     src/main.cpp
     src/net/TcpConnection.cpp
     src/net/TcpListener.cpp
+    src/pool/BackendPool.cpp
+    src/balancer/RoundRobin.cpp
 )

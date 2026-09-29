@@ -1,12 +1,21 @@
 #include "common.hpp"
 #include "net/TcpListener.hpp"
 #include "net/TcpConnection.hpp"
+#include "pool/BackendPool.hpp"
+#include "balancer/RoundRobin.hpp"
+#include "pool/Backend.hpp"
 
-void function_client(int client_fd) {
+void function_client(int client_fd,BackendPool& pool, RoundRobin& rr) {
     sockaddr_in backend_address{};
     backend_address.sin_family=AF_INET;
-    backend_address.sin_port=htons(9000);
-    inet_pton(AF_INET,"127.0.0.1",&backend_address.sin_addr);
+    Backend* pick=rr.pick_backend(pool);
+    if (pick == nullptr) {
+        cerr << "No healthy backend available\n";
+        return;
+    }
+    pick->active_connections++;
+    backend_address.sin_port=htons(pick->port);
+    inet_pton(AF_INET,pick->host.c_str(),&backend_address.sin_addr);
 
     int backend_fd=socket(AF_INET,SOCK_STREAM,0);
     if(backend_fd<0) {
@@ -52,9 +61,22 @@ void function_client(int client_fd) {
         cout<<"Data received from backend"<<endl;
         cout<<"Data Sent to client"<<endl;
     }
+    pick->active_connections--;
 }
 
 int main() {
+
+    BackendPool pool;
+    Backend B1("127.0.0.1",9000);
+    Backend B2("127.0.0.1",9001);
+    Backend B3("127.0.0.1",9002);
+    pool.add_backend(B1);
+    pool.add_backend(B2);
+    pool.add_backend(B3);
+
+    RoundRobin rr;
+
+
     TcpListener server;
     
     sockaddr_in address{};
@@ -90,7 +112,7 @@ int main() {
 
         cout<<"Client Connected"<<endl;
 
-        thread t1(function_client,client_fd);
+        thread t1(function_client,client_fd,ref(pool),ref(rr));
         t1.detach();
     }
 

@@ -1,9 +1,8 @@
-#pragma once
 #include "BackendPool.hpp"
 
 void BackendPool::add_backend(const Backend& backend) {
     lock_guard<mutex>lock(pool_mutex);
-    pool.push_back(backend);
+    pool.emplace_back(backend.host,backend.port,backend.weight);
 }
 void BackendPool::remove_backend(const string& ip,int port_no) {
     lock_guard<mutex>lock(pool_mutex);

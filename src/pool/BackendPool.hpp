@@ -4,7 +4,11 @@
 #include <mutex>
 using namespace std;
 
+class RoundRobin;
+
 class BackendPool {
+    friend RoundRobin;
+    private:
     vector<Backend>pool;
     mutex pool_mutex;
     public:

@@ -6,5 +6,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <thread>
+#include <functional>
 
 using namespace std;
