@@ -3,16 +3,21 @@
 #include "net/TcpConnection.hpp"
 #include "pool/BackendPool.hpp"
 #include "balancer/RoundRobin.hpp"
+#include "balancer/WeightedRR.hpp"
+#include "balancer/Random.hpp"
+#include "balancer/IAlgorithm.hpp"
 #include "pool/Backend.hpp"
 
-void function_client(int client_fd,BackendPool& pool, RoundRobin& rr) {
+void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
     sockaddr_in backend_address{};
     backend_address.sin_family=AF_INET;
-    Backend* pick=rr.pick_backend(pool);
+    Backend* pick=algorithm.pick_backend(pool);
     if (pick == nullptr) {
         cerr << "No healthy backend available\n";
         return;
     }
+    cout << "Selected backend: "
+     << pick->host << ":" << pick->port << endl;
     pick->active_connections++;
     backend_address.sin_port=htons(pick->port);
     inet_pton(AF_INET,pick->host.c_str(),&backend_address.sin_addr);
@@ -67,14 +72,18 @@ void function_client(int client_fd,BackendPool& pool, RoundRobin& rr) {
 int main() {
 
     BackendPool pool;
-    Backend B1("127.0.0.1",9000);
-    Backend B2("127.0.0.1",9001);
-    Backend B3("127.0.0.1",9002);
+    Backend B1("127.0.0.1",9000,3);
+    Backend B2("127.0.0.1",9001,1);
+    Backend B3("127.0.0.1",9002,2);
+    Backend B4("127.0.0.1",9003,2);
+    Backend B5("127.0.0.1",9004,2);
     pool.add_backend(B1);
     pool.add_backend(B2);
     pool.add_backend(B3);
+    pool.add_backend(B4);
+    pool.add_backend(B5);
 
-    RoundRobin rr;
+    Random rr;
 
 
     TcpListener server;

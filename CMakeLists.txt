@@ -11,4 +11,6 @@ add_executable(load_balancer
     src/net/TcpListener.cpp
     src/pool/BackendPool.cpp
     src/balancer/RoundRobin.cpp
+    src/balancer/WeightedRR.cpp
+    src/balancer/Random.cpp
 )

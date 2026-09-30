@@ -5,9 +5,13 @@
 using namespace std;
 
 class RoundRobin;
+class WeightedRR;
+class Random;
 
 class BackendPool {
     friend RoundRobin;
+    friend WeightedRR;
+    friend Random;
     private:
     vector<Backend>pool;
     mutex pool_mutex;
