@@ -13,4 +13,5 @@ add_executable(load_balancer
     src/balancer/RoundRobin.cpp
     src/balancer/WeightedRR.cpp
     src/balancer/Random.cpp
+    src/balancer/LeastConnections.cpp
 )

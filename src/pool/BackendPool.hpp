@@ -7,11 +7,13 @@ using namespace std;
 class RoundRobin;
 class WeightedRR;
 class Random;
+class LeastConnections;
 
 class BackendPool {
     friend RoundRobin;
     friend WeightedRR;
     friend Random;
+    friend LeastConnections;
     private:
     vector<Backend>pool;
     mutex pool_mutex;

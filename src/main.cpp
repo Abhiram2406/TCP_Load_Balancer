@@ -5,6 +5,7 @@
 #include "balancer/RoundRobin.hpp"
 #include "balancer/WeightedRR.hpp"
 #include "balancer/Random.hpp"
+#include "balancer/LeastConnections.hpp"
 #include "balancer/IAlgorithm.hpp"
 #include "pool/Backend.hpp"
 
@@ -16,9 +17,13 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
         cerr << "No healthy backend available\n";
         return;
     }
+    
     cout << "Selected backend: "
-     << pick->host << ":" << pick->port << endl;
-    pick->active_connections++;
+     << pick->port
+     << " | active: "
+     << pick->active_connections
+     << endl;
+
     backend_address.sin_port=htons(pick->port);
     inet_pton(AF_INET,pick->host.c_str(),&backend_address.sin_addr);
 
@@ -32,6 +37,7 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
         close(backend_fd);
         return;
     }
+    pick->active_connections++;
     TcpConnection backend(backend_fd);
     TcpConnection client(client_fd);
 
@@ -46,6 +52,7 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
 
         if(send_data_backend<0) {
             perror("receive");
+            pick->active_connections--;
             return;
         }
 
@@ -61,6 +68,7 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
 
         if(send_data_client<0) {
             perror("send");
+            pick->active_connections--;
             return;
         }
         cout<<"Data received from backend"<<endl;
@@ -80,10 +88,10 @@ int main() {
     pool.add_backend(B1);
     pool.add_backend(B2);
     pool.add_backend(B3);
-    pool.add_backend(B4);
-    pool.add_backend(B5);
+    // pool.add_backend(B4);
+    // pool.add_backend(B5);
 
-    Random rr;
+    LeastConnections rr;
 
 
     TcpListener server;
