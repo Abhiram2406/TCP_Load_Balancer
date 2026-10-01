@@ -1,6 +1,6 @@
 #include "WeightedRR.hpp"
 
-Backend* WeightedRR::pick_backend(BackendPool& pool) {
+Backend* WeightedRR::pick_backend(BackendPool& pool,const string& client_ip) {
     if (pool.pool.empty()) {
         return nullptr;
     }

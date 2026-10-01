@@ -6,13 +6,14 @@
 #include "balancer/WeightedRR.hpp"
 #include "balancer/Random.hpp"
 #include "balancer/LeastConnections.hpp"
+#include "balancer/IpHash.hpp"
 #include "balancer/IAlgorithm.hpp"
 #include "pool/Backend.hpp"
 
-void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm) {
+void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,const string& client_ip) {
     sockaddr_in backend_address{};
     backend_address.sin_family=AF_INET;
-    Backend* pick=algorithm.pick_backend(pool);
+    Backend* pick=algorithm.pick_backend(pool,client_ip);
     if (pick == nullptr) {
         cerr << "No healthy backend available\n";
         return;
@@ -91,8 +92,7 @@ int main() {
     // pool.add_backend(B4);
     // pool.add_backend(B5);
 
-    LeastConnections rr;
-
+    IpHash rr;
 
     TcpListener server;
     
@@ -127,9 +127,18 @@ int main() {
             continue;
         }
 
+        char client_ip[INET_ADDRSTRLEN];
+
+        inet_ntop(
+            AF_INET,
+            &client_address.sin_addr,
+            client_ip,
+            INET_ADDRSTRLEN
+        );
+
         cout<<"Client Connected"<<endl;
 
-        thread t1(function_client,client_fd,ref(pool),ref(rr));
+        thread t1(function_client,client_fd,ref(pool),ref(rr),client_ip);
         t1.detach();
     }
 

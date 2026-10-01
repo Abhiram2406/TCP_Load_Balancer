@@ -8,12 +8,14 @@ class RoundRobin;
 class WeightedRR;
 class Random;
 class LeastConnections;
+class IpHash;
 
 class BackendPool {
     friend RoundRobin;
     friend WeightedRR;
     friend Random;
     friend LeastConnections;
+    friend IpHash;
     private:
     vector<Backend>pool;
     mutex pool_mutex;

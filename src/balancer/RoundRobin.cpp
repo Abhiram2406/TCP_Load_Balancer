@@ -1,6 +1,6 @@
 #include "RoundRobin.hpp"
 
-Backend* RoundRobin::pick_backend(BackendPool& pool_array) {
+Backend* RoundRobin::pick_backend(BackendPool& pool_array,const string& client_ip) {
     if (pool_array.pool.empty()) return nullptr;
 
     size_t start=current_index;
