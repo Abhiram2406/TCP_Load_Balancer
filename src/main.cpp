@@ -9,6 +9,7 @@
 #include "balancer/IpHash.hpp"
 #include "balancer/IAlgorithm.hpp"
 #include "pool/Backend.hpp"
+#include "config/ConfigLoader.hpp"
 
 void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,const string& client_ip) {
     sockaddr_in backend_address{};
@@ -19,11 +20,11 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         return;
     }
     
-    cout << "Selected backend: "
-     << pick->port
-     << " | active: "
-     << pick->active_connections
-     << endl;
+    // cout << "Selected backend: "
+    //  << pick->port
+    //  << " | active: "
+    //  << pick->active_connections
+    //  << endl;
 
     backend_address.sin_port=htons(pick->port);
     inet_pton(AF_INET,pick->host.c_str(),&backend_address.sin_addr);
@@ -79,31 +80,45 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
 }
 
 int main() {
-
+    Config config=ConfigLoader::load("config/lb.toml");
     BackendPool pool;
-    Backend B1("127.0.0.1",9000,3);
-    Backend B2("127.0.0.1",9001,1);
-    Backend B3("127.0.0.1",9002,2);
-    Backend B4("127.0.0.1",9003,2);
-    Backend B5("127.0.0.1",9004,2);
-    pool.add_backend(B1);
-    pool.add_backend(B2);
-    pool.add_backend(B3);
-    // pool.add_backend(B4);
-    // pool.add_backend(B5);
 
-    IpHash rr;
+    for(auto backend: config.backends) {
+        pool.add_backend(
+            Backend(backend.host,backend.port,backend.weight)
+        );
+    }
+
+    RoundRobin rr;
+    WeightedRR wrr;
+    Random rand;
+    LeastConnections lc;
+    IpHash ih;
+    IAlgorithm* algorithm;
+
+    if(config.algorithm=="Round Robin") {
+        algorithm=new RoundRobin;
+    }else if(config.algorithm=="weighted Round Robin") {
+        algorithm=new WeightedRR;
+    }else if(config.algorithm=="Random") {
+        algorithm=new Random;
+    }else if(config.algorithm=="Ip Hash") {
+        algorithm=new IpHash;
+    }else if(config.algorithm=="Least Connections") {
+        algorithm=new LeastConnections;
+    }
 
     TcpListener server;
     
     sockaddr_in address{};
     address.sin_family=AF_INET;
-    address.sin_port=htons(2424);
+    address.sin_port=htons(config.listen_port);
     address.sin_addr.s_addr=INADDR_ANY;
 
     
     if(server.bind_to_port((sockaddr*)&address,sizeof(address))==-1) {
         perror("bind");
+        delete algorithm;
         return 1;
     }
 
@@ -111,6 +126,7 @@ int main() {
 
     if(server.listen_on_port(2)==-1) {
         perror("listen");
+        delete algorithm;
         return 1;
     }
 
@@ -138,9 +154,12 @@ int main() {
 
         cout<<"Client Connected"<<endl;
 
-        thread t1(function_client,client_fd,ref(pool),ref(rr),client_ip);
+        
+
+        thread t1(function_client,client_fd,ref(pool),ref(*(algorithm)),client_ip);
         t1.detach();
     }
 
+    delete algorithm;
     return 0;
 }

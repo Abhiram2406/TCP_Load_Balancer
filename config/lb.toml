@@ -1,0 +1,17 @@
+listen_port = 2424
+algorithm = "least_connections"
+
+[[backends]]
+host = "127.0.0.1"
+port = 9000
+weight = 3
+
+[[backends]]
+host = "127.0.0.1"
+port = 9001
+weight = 1
+
+[[backends]]
+host = "127.0.0.1"
+port = 9002
+weight = 2
