@@ -8,7 +8,7 @@ void BackendPool::remove_backend(const string& ip,int port_no) {
     lock_guard<mutex>lock(pool_mutex);
     for(int i=0;i<pool.size();i++) {
         if(pool[i].host==ip && pool[i].port==port_no) {
-            pool[i].state=BackendState::DRAINING;
+            pool[i].state=HealthState::UNHEALTHY;
             return;
         }
     }
@@ -20,15 +20,15 @@ void BackendPool::list_backend() {
     for(const auto &backend : pool) {
         string situation;
         switch (backend.state) {
-            case BackendState::HEALTHY:
+            case HealthState::HEALTHY:
                 situation = "HEALTHY";
                 break;
 
-            case BackendState::DRAINING:
-                situation = "DRAINING";
-                break;
+            // case HealthState::DRAINING:
+            //     situation = "DRAINING";
+            //     break;
 
-            case BackendState::UNHEALTHY:
+            case HealthState::UNHEALTHY:
                 situation = "UNHEALTHY";
                 break;
         }

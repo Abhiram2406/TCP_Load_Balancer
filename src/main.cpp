@@ -10,6 +10,7 @@
 #include "balancer/IAlgorithm.hpp"
 #include "pool/Backend.hpp"
 #include "config/ConfigLoader.hpp"
+#include "health/HealthChecker.hpp"
 
 void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,const string& client_ip) {
     sockaddr_in backend_address{};
@@ -88,6 +89,9 @@ int main() {
             Backend(backend.host,backend.port,backend.weight)
         );
     }
+
+    HealthChecker checker(pool);
+    checker.start();
 
     RoundRobin rr;
     WeightedRR wrr;

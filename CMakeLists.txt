@@ -27,6 +27,7 @@ add_executable(load_balancer
     src/balancer/IpHash.cpp
     src/config/ConfigLoader.cpp
     src/health/HealthStateMachine.cpp
+    src/health/HealthChecker.cpp
 )
 
 target_link_libraries(load_balancer PRIVATE tomlplusplus::tomlplusplus)

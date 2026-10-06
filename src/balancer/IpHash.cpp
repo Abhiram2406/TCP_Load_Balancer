@@ -3,7 +3,7 @@
 Backend* IpHash::pick_backend(BackendPool& pool, const string& client_ip) {
     vector<size_t>store;
     for(size_t i=0;i<pool.pool.size();i++) {
-        if(pool.pool[i].state==BackendState::HEALTHY) {
+        if(pool.pool[i].state==HealthState::HEALTHY) {
             store.push_back(i);
         }
     }
