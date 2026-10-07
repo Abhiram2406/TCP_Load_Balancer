@@ -35,11 +35,14 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         perror("backend_socket");
         return;
     }
-    if(connect(backend_fd,(sockaddr*)&backend_address,sizeof(backend_address))==-1) {
+    int response=connect(backend_fd,(sockaddr*)&backend_address,sizeof(backend_address));
+    if(response!=0) {
         perror("backend_connection");
+        pick->health_machine.on_failure();
         close(backend_fd);
         return;
     }
+    pick->health_machine.on_success();
     pick->active_connections++;
     TcpConnection backend(backend_fd);
     TcpConnection client(client_fd);

@@ -1,5 +1,5 @@
 listen_port = 2424
-algorithm = "least_connections"
+algorithm = "Least Connections"
 
 [[backends]]
 host = "127.0.0.1"

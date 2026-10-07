@@ -1,5 +1,6 @@
 #include "HealthStateMachine.hpp"
 
+
 HealthStateMachine::HealthStateMachine(int sThreshold,int fThreshold):success_threshold(sThreshold),failure_threshold(fThreshold),success_count(0),failure_count(0),state(HealthState::HEALTHY) {};
 
 void HealthStateMachine::on_success() {
@@ -15,6 +16,7 @@ void HealthStateMachine::on_success() {
         success_count++;
     }
     failure_count=0;
+
 }
 
 void HealthStateMachine::on_failure() {
@@ -29,7 +31,7 @@ void HealthStateMachine::on_failure() {
     }else{
         failure_count++;
     }
-    success_count=0;
+
 }
 
 HealthState HealthStateMachine::get_state() const {
