@@ -7,7 +7,7 @@ Backend* RoundRobin::pick_backend(BackendPool& pool_array,const string& client_i
     current_index++;
     for(size_t i=0;i<pool_array.pool.size();i++) {
         size_t idx=(start+i)%pool_array.pool.size();
-        if(pool_array.pool[idx].state==HealthState::HEALTHY) {
+        if(pool_array.pool[idx].health_machine.state==HealthState::HEALTHY) {
             return &pool_array.pool[idx];
         }
     }
