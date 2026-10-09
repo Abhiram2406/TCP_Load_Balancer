@@ -1,7 +1,9 @@
 #pragma once
 #include <iostream>
 #include <atomic>
+#include<optional>
 #include "../health/HealthStateMachine.hpp"
+#include"../net/ConnectionRegistry.hpp"
 using namespace std;
 
 struct Backend {
@@ -11,6 +13,8 @@ struct Backend {
     HealthState state;
     atomic<int>active_connections{0};
     HealthStateMachine health_machine;
+    ConnectionRegistry registry;
+    optional<chrono::steady_clock::time_point>drain_start_time;
     Backend(string ip,int port_no):host(ip),port(port_no),weight(1),state(HealthState::HEALTHY),health_machine(3,3) {};
     Backend(string ip,int port_no,int wt):host(ip),port(port_no),weight(wt),state(HealthState::HEALTHY),health_machine(3,3) {};
     Backend(Backend&& other) noexcept
@@ -32,4 +36,5 @@ struct Backend {
         }
         return *this;
     }
+    void drain();
 };

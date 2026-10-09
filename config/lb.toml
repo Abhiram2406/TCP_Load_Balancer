@@ -1,5 +1,6 @@
 listen_port = 2424
 algorithm = "Least Connections"
+drainout_time=30
 
 [[backends]]
 host = "127.0.0.1"

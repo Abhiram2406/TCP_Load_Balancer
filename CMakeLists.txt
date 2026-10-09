@@ -19,6 +19,8 @@ add_executable(load_balancer
     src/main.cpp
     src/net/TcpConnection.cpp
     src/net/TcpListener.cpp
+    src/net/ConnectionRegistry.cpp
+    src/pool/Backend.cpp
     src/pool/BackendPool.cpp
     src/balancer/RoundRobin.cpp
     src/balancer/WeightedRR.cpp
@@ -28,6 +30,7 @@ add_executable(load_balancer
     src/config/ConfigLoader.cpp
     src/health/HealthStateMachine.cpp
     src/health/HealthChecker.cpp
+    src/balancer/DrainMonitor.cpp
 )
 
 target_link_libraries(load_balancer PRIVATE tomlplusplus::tomlplusplus)

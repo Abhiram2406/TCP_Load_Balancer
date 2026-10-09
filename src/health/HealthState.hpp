@@ -3,5 +3,6 @@
 enum class HealthState {
     HEALTHY,
     SUSPECTED,
-    UNHEALTHY
+    UNHEALTHY,
+    DRAINING
 };

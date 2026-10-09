@@ -14,7 +14,7 @@ Backend* WeightedRR::pick_backend(BackendPool& pool,const string& client_ip) {
     size_t start=current_index;
     for(size_t i=0;i<pool.pool.size();i++) {
         size_t idx=(start+i)%pool.pool.size();
-        if(pool.pool[idx].health_machine.state==HealthState::HEALTHY) {
+        if(pool.pool[idx].health_machine.get_state()==HealthState::HEALTHY) {
             current_index+=i;
             if(i!=0) current_usage=1;
             else current_usage++;

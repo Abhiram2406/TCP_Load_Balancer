@@ -28,9 +28,10 @@ void HealthChecker::start() {
     thread checker_thread([this]() {
         while(running) {
         for(auto &backend : pool.pool) {
+            if(backend.health_machine.get_state()!=HealthState::DRAINING)
             check_backend(backend);
         }
-        this_thread::sleep_for(chrono::seconds(5));
+        this_thread::sleep_for(chrono::seconds(10));
     }
     });
     checker_thread.detach();

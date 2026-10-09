@@ -13,4 +13,5 @@ struct Config {
     int listen_port;
     string algorithm;
     vector<BackendConfig>backends;
+    int drainout_time;
 };

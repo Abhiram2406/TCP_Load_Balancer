@@ -11,6 +11,8 @@
 #include "pool/Backend.hpp"
 #include "config/ConfigLoader.hpp"
 #include "health/HealthChecker.hpp"
+#include "net/ConnectionRegistry.hpp"
+#include "balancer/DrainMonitor.hpp"
 
 void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,const string& client_ip) {
     sockaddr_in backend_address{};
@@ -20,12 +22,6 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         cerr << "No healthy backend available\n";
         return;
     }
-    
-    // cout << "Selected backend: "
-    //  << pick->port
-    //  << " | active: "
-    //  << pick->active_connections
-    //  << endl;
 
     backend_address.sin_port=htons(pick->port);
     inet_pton(AF_INET,pick->host.c_str(),&backend_address.sin_addr);
@@ -42,6 +38,8 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         close(backend_fd);
         return;
     }
+    pick->registry.register_connection(client_fd,backend_fd);
+    cout<<pick->registry.get_active_count()<<endl;
     pick->health_machine.on_success();
     pick->active_connections++;
     TcpConnection backend(backend_fd);
@@ -59,6 +57,7 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         if(send_data_backend<0) {
             perror("receive");
             pick->active_connections--;
+            pick->registry.unregister_connection(client_fd,backend_fd);
             return;
         }
 
@@ -75,15 +74,49 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
         if(send_data_client<0) {
             perror("send");
             pick->active_connections--;
+            pick->registry.unregister_connection(client_fd,backend_fd);
             return;
         }
         cout<<"Data received from backend"<<endl;
         cout<<"Data Sent to client"<<endl;
     }
     pick->active_connections--;
+    pick->registry.unregister_connection(client_fd,backend_fd);
+}
+
+void validate_inputs(BackendPool& pool) {
+    while(true) {
+        string command;
+        getline(cin,command);
+        vector<string>command_tokens;
+        string temp="";
+        for(int i=0;i<command.length();i++) {
+            if(command[i]==' ') {
+                command_tokens.push_back(temp);
+                temp="";
+            }else{
+                temp+=command[i];
+            }
+        }
+        command_tokens.push_back(temp);
+        if(!command_tokens.empty() && command_tokens[0]!="bob") {
+            cout<<"INVALID COMMAND!!"<<endl;
+            continue;
+        }
+        if(command_tokens.size()>2 && command_tokens[1]=="drain") {
+            pool.drain_backend(command_tokens[2],stoi(command_tokens[3]));
+            pool.list_backend();
+        }else if(command_tokens.size()>1 && command_tokens[1]=="info") {
+            pool.list_backend();
+        }else{
+            cout<<"INVALID COMMAND!!"<<endl;
+            continue;
+        }
+    }
 }
 
 int main() {
+
     Config config=ConfigLoader::load("config/lb.toml");
     BackendPool pool;
 
@@ -92,9 +125,15 @@ int main() {
             Backend(backend.host,backend.port,backend.weight)
         );
     }
+    int drainout_time=config.drainout_time;
+    thread command_inputs(validate_inputs,ref(pool));
+    command_inputs.detach();
 
     HealthChecker checker(pool);
     checker.start();
+
+    DrainMonitor monitor(pool);
+    monitor.start(drainout_time);
 
     RoundRobin rr;
     WeightedRR wrr;
@@ -126,6 +165,8 @@ int main() {
     if(server.bind_to_port((sockaddr*)&address,sizeof(address))==-1) {
         perror("bind");
         delete algorithm;
+        monitor.stop();
+        checker.stop();
         return 1;
     }
 
@@ -134,6 +175,8 @@ int main() {
     if(server.listen_on_port(2)==-1) {
         perror("listen");
         delete algorithm;
+        monitor.stop();
+        checker.stop();
         return 1;
     }
 
@@ -168,5 +211,7 @@ int main() {
     }
 
     delete algorithm;
+    monitor.stop();
+    checker.stop();
     return 0;
 }

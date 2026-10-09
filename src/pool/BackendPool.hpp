@@ -10,6 +10,7 @@ class Random;
 class LeastConnections;
 class IpHash;
 class HealthChecker;
+class DrainMonitor;
 
 class BackendPool {
     friend RoundRobin;
@@ -18,6 +19,7 @@ class BackendPool {
     friend LeastConnections;
     friend IpHash;
     friend HealthChecker;
+    friend DrainMonitor;
     private:
     vector<Backend>pool;
     mutex pool_mutex;
@@ -25,4 +27,5 @@ class BackendPool {
     void add_backend(const Backend& backend);
     void remove_backend(const string& host,int port);
     void list_backend();
+    void drain_backend(const string& host, int port);
 };

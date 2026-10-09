@@ -7,6 +7,7 @@ Config ConfigLoader::load(const std::string& filename) {
 
     config.listen_port = table["listen_port"].value_or(0);
     config.algorithm = table["algorithm"].value_or("");
+    config.drainout_time = table["drainout_time"].value_or(0);
 
     if (auto backends = table["backends"].as_array())
     {
