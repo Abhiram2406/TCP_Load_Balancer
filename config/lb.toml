@@ -1,6 +1,6 @@
 listen_port = 2424
-algorithm = "Least Connections"
-drainout_time=30
+algorithm = "Round Robin"
+drainout_time=20
 
 [[backends]]
 host = "127.0.0.1"

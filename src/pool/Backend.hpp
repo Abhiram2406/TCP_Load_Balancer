@@ -15,6 +15,7 @@ struct Backend {
     HealthStateMachine health_machine;
     ConnectionRegistry registry;
     optional<chrono::steady_clock::time_point>drain_start_time;
+    bool remove_after_drain=false;
     Backend(string ip,int port_no):host(ip),port(port_no),weight(1),state(HealthState::HEALTHY),health_machine(3,3) {};
     Backend(string ip,int port_no,int wt):host(ip),port(port_no),weight(wt),state(HealthState::HEALTHY),health_machine(3,3) {};
     Backend(Backend&& other) noexcept

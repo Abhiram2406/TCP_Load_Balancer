@@ -1,3 +1,4 @@
+#include<memory>
 #include "common.hpp"
 #include "net/TcpListener.hpp"
 #include "net/TcpConnection.hpp"
@@ -14,10 +15,10 @@
 #include "net/ConnectionRegistry.hpp"
 #include "balancer/DrainMonitor.hpp"
 
-void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,const string& client_ip) {
+void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algorithm,const string& client_ip) {
     sockaddr_in backend_address{};
     backend_address.sin_family=AF_INET;
-    Backend* pick=algorithm.pick_backend(pool,client_ip);
+    Backend* pick=algorithm->pick_backend(pool,client_ip);
     if (pick == nullptr) {
         cerr << "No healthy backend available\n";
         return;
@@ -84,7 +85,8 @@ void function_client(int client_fd,BackendPool& pool, IAlgorithm& algorithm,cons
     pick->registry.unregister_connection(client_fd,backend_fd);
 }
 
-void validate_inputs(BackendPool& pool) {
+void validate_inputs(BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>algorithm,mutex& algorithm_mutex,DrainMonitor& monitor) {
+
     while(true) {
         string command;
         getline(cin,command);
@@ -108,6 +110,35 @@ void validate_inputs(BackendPool& pool) {
             pool.list_backend();
         }else if(command_tokens.size()>1 && command_tokens[1]=="info") {
             pool.list_backend();
+        }else if(command_tokens.size()>1 && command_tokens[1]=="reload") {
+            Config new_config=ConfigLoader::load(toml_file);
+
+            pool.update_backends(new_config.backends);
+            cout<<"NEW BACKENDS WERE KEPT INTO IMPLEMENTATION!!"<<endl;
+            monitor.update_drainout_time(new_config.drainout_time);
+            cout<<"DRAINOUT TIME UPDATED!"<<endl;
+
+            shared_ptr<IAlgorithm>new_algorithm;
+            if(new_config.algorithm=="Round Robin") {
+                new_algorithm=make_shared<RoundRobin>();
+            }else if(new_config.algorithm=="Weighted Round Robin") {
+                new_algorithm=make_shared<WeightedRR>();
+            }else if(new_config.algorithm=="Random") {
+                new_algorithm=make_shared<Random>();
+            }else if(new_config.algorithm=="Ip Hash") {
+                new_algorithm=make_shared<IpHash>();
+            }else if(new_config.algorithm=="Least Connections") {
+                new_algorithm=make_shared<LeastConnections>();
+            }
+
+            if(new_algorithm) {
+                lock_guard<mutex>lock(algorithm_mutex);
+                algorithm=new_algorithm;
+                cout<<"ALGORITHM RELOADED SUCCESSFULLY"<<endl;
+            }else{
+                cout<<"INVALID ALGORITHM"<<endl;
+            }
+
         }else{
             cout<<"INVALID COMMAND!!"<<endl;
             continue;
@@ -126,33 +157,36 @@ int main() {
         );
     }
     int drainout_time=config.drainout_time;
-    thread command_inputs(validate_inputs,ref(pool));
-    command_inputs.detach();
+    
+    mutex algorithm_mutex;
+    shared_ptr<IAlgorithm>algorithm;
+
+    DrainMonitor monitor(pool,drainout_time);
+    monitor.start();
 
     HealthChecker checker(pool);
     checker.start();
-
-    DrainMonitor monitor(pool);
-    monitor.start(drainout_time);
 
     RoundRobin rr;
     WeightedRR wrr;
     Random rand;
     LeastConnections lc;
     IpHash ih;
-    IAlgorithm* algorithm;
 
     if(config.algorithm=="Round Robin") {
-        algorithm=new RoundRobin;
-    }else if(config.algorithm=="weighted Round Robin") {
-        algorithm=new WeightedRR;
+        algorithm=make_shared<RoundRobin>();
+    }else if(config.algorithm=="Weighted Round Robin") {
+        algorithm=make_shared<WeightedRR>();
     }else if(config.algorithm=="Random") {
-        algorithm=new Random;
+        algorithm=make_shared<Random>();
     }else if(config.algorithm=="Ip Hash") {
-        algorithm=new IpHash;
+        algorithm=make_shared<IpHash>();
     }else if(config.algorithm=="Least Connections") {
-        algorithm=new LeastConnections;
+        algorithm=make_shared<LeastConnections>();
     }
+
+    thread command_inputs(validate_inputs,ref(pool),"config/lb.toml",ref(algorithm),ref(algorithm_mutex),ref(monitor));
+    command_inputs.detach();
 
     TcpListener server;
     
@@ -164,7 +198,6 @@ int main() {
     
     if(server.bind_to_port((sockaddr*)&address,sizeof(address))==-1) {
         perror("bind");
-        delete algorithm;
         monitor.stop();
         checker.stop();
         return 1;
@@ -174,7 +207,6 @@ int main() {
 
     if(server.listen_on_port(2)==-1) {
         perror("listen");
-        delete algorithm;
         monitor.stop();
         checker.stop();
         return 1;
@@ -204,13 +236,18 @@ int main() {
 
         cout<<"Client Connected"<<endl;
 
+        shared_ptr<IAlgorithm>selected_algorithm;
+        {
+            lock_guard<mutex>lock(algorithm_mutex);
+            selected_algorithm=algorithm;
+        }
+
         
 
-        thread t1(function_client,client_fd,ref(pool),ref(*(algorithm)),client_ip);
+        thread t1(function_client,client_fd,ref(pool),selected_algorithm,client_ip);
         t1.detach();
     }
 
-    delete algorithm;
     monitor.stop();
     checker.stop();
     return 0;

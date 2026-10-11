@@ -1,5 +1,6 @@
 #pragma once
 #include "Backend.hpp"
+#include"../config/Config.hpp"
 #include <vector>
 #include <mutex>
 using namespace std;
@@ -28,4 +29,5 @@ class BackendPool {
     void remove_backend(const string& host,int port);
     void list_backend();
     void drain_backend(const string& host, int port);
+    void update_backends(const vector<BackendConfig>&backends);
 };
