@@ -63,7 +63,7 @@ vector<double> Histogram::estimate_percentiles() {
         total += count;
     }
     if (total == 0) {
-        return {-1,-1,-1};
+        return {0,0,0};
     }
 
     vector<double> percentiles = {50, 95, 99};
@@ -80,8 +80,15 @@ vector<double> Histogram::estimate_percentiles() {
                     estimate = (bins[i].first + bins[i].second) / 2.0;
                 } else {
                     int previous = cumulative - counts[i];
-                    double fraction =(double)(target - previous) / counts[i];
-                    estimate = bins[i].first +fraction * (bins[i].second - bins[i].first);
+                    if (i == 6) {
+                        estimate = bins[i].first;
+                    } else if (i == 0) {
+                        estimate = (bins[i].first + bins[i].second) / 2.0;
+                    } else {
+                        int previous = cumulative - counts[i];
+                        double fraction =(double)(target - previous) / counts[i];
+                        estimate = bins[i].first +fraction * (bins[i].second - bins[i].first);
+                    }
                 }
                 ans.push_back(estimate);
                 break;

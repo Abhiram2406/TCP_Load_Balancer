@@ -1,11 +1,14 @@
 #pragma once
 #include<atomic>
+#include "Histogram.hpp"
 using namespace std;
 class MetricsRegistry {
     atomic<uint64_t>total_connections{0};
     atomic<int>active_connections{0};
     atomic<uint64_t>total_errors{0};
     public:
+    Histogram backend_connection_latency;
+    Histogram client_duration;
     void record_connection();
     void update_connection(bool done);
     void record_error();
