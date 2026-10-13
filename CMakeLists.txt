@@ -31,6 +31,8 @@ add_executable(load_balancer
     src/health/HealthStateMachine.cpp
     src/health/HealthChecker.cpp
     src/balancer/DrainMonitor.cpp
+    src/metrics/MetricsRegistry.cpp
+    src/metrics/Histogram.cpp
 )
 
 target_link_libraries(load_balancer PRIVATE tomlplusplus::tomlplusplus)

@@ -14,13 +14,15 @@
 #include "health/HealthChecker.hpp"
 #include "net/ConnectionRegistry.hpp"
 #include "balancer/DrainMonitor.hpp"
+#include "metrics/MetricsRegistry.hpp"
 
-void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algorithm,const string& client_ip) {
+void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algorithm,const string& client_ip,MetricsRegistry& registry) {
     sockaddr_in backend_address{};
     backend_address.sin_family=AF_INET;
     Backend* pick=algorithm->pick_backend(pool,client_ip);
     if (pick == nullptr) {
         cerr << "No healthy backend available\n";
+        registry.record_error();
         return;
     }
 
@@ -30,6 +32,7 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
     int backend_fd=socket(AF_INET,SOCK_STREAM,0);
     if(backend_fd<0) {
         perror("backend_socket");
+        registry.record_error();
         return;
     }
     int response=connect(backend_fd,(sockaddr*)&backend_address,sizeof(backend_address));
@@ -37,8 +40,10 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
         perror("backend_connection");
         pick->health_machine.on_failure();
         close(backend_fd);
+        registry.record_error();
         return;
     }
+    registry.update_connection(false);
     pick->registry.register_connection(client_fd,backend_fd);
     cout<<pick->registry.get_active_count()<<endl;
     pick->health_machine.on_success();
@@ -59,6 +64,8 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
             perror("receive");
             pick->active_connections--;
             pick->registry.unregister_connection(client_fd,backend_fd);
+            registry.update_connection(true);
+            registry.record_error();
             return;
         }
 
@@ -76,6 +83,8 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
             perror("send");
             pick->active_connections--;
             pick->registry.unregister_connection(client_fd,backend_fd);
+            registry.update_connection(true);
+            registry.record_error();
             return;
         }
         cout<<"Data received from backend"<<endl;
@@ -83,9 +92,10 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
     }
     pick->active_connections--;
     pick->registry.unregister_connection(client_fd,backend_fd);
+    registry.update_connection(true);
 }
 
-void validate_inputs(BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>algorithm,mutex& algorithm_mutex,DrainMonitor& monitor) {
+void validate_inputs(BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>algorithm,mutex& algorithm_mutex,DrainMonitor& monitor,MetricsRegistry& registry) {
 
     while(true) {
         string command;
@@ -109,6 +119,12 @@ void validate_inputs(BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>al
             pool.drain_backend(command_tokens[2],stoi(command_tokens[3]));
             pool.list_backend();
         }else if(command_tokens.size()>1 && command_tokens[1]=="info") {
+            Config config=ConfigLoader::load(toml_file);
+            cout<<"----------------------------------------------------------------------"<<endl;
+            cout<<"TOTAL CONNECTIONS: "<<registry.get_total_connections()<<endl;
+            cout<<"ACTIVE CONNECTIONS: "<<registry.get_active_connections()<<endl;
+            cout<<"TOTAL ERRORS: "<<registry.get_total_errors()<<endl;
+            cout<<"CURRENT ALGORITHM: "<<config.algorithm<<endl;
             pool.list_backend();
         }else if(command_tokens.size()>1 && command_tokens[1]=="reload") {
             Config new_config=ConfigLoader::load(toml_file);
@@ -150,6 +166,7 @@ int main() {
 
     Config config=ConfigLoader::load("config/lb.toml");
     BackendPool pool;
+    MetricsRegistry registry;
 
     for(auto backend: config.backends) {
         pool.add_backend(
@@ -185,7 +202,7 @@ int main() {
         algorithm=make_shared<LeastConnections>();
     }
 
-    thread command_inputs(validate_inputs,ref(pool),"config/lb.toml",ref(algorithm),ref(algorithm_mutex),ref(monitor));
+    thread command_inputs(validate_inputs,ref(pool),"config/lb.toml",ref(algorithm),ref(algorithm_mutex),ref(monitor),ref(registry));
     command_inputs.detach();
 
     TcpListener server;
@@ -224,7 +241,7 @@ int main() {
             perror("accept");
             continue;
         }
-
+        registry.record_connection();
         char client_ip[INET_ADDRSTRLEN];
 
         inet_ntop(
@@ -244,7 +261,7 @@ int main() {
 
         
 
-        thread t1(function_client,client_fd,ref(pool),selected_algorithm,client_ip);
+        thread t1(function_client,client_fd,ref(pool),selected_algorithm,client_ip,ref(registry));
         t1.detach();
     }
 
