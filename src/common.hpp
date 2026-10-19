@@ -7,5 +7,11 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <functional>
+#include <sys/un.h>
+#include <sys/stat.h>
+#include <cerrno>
+#include <stdexcept>
+#include <utility>
+#include <memory>
 
 using namespace std;

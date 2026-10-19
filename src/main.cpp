@@ -16,6 +16,7 @@
 #include "net/ConnectionRegistry.hpp"
 #include "balancer/DrainMonitor.hpp"
 #include "metrics/MetricsRegistry.hpp"
+#include "control/ControlServer.hpp"
 
 void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algorithm,const string& client_ip,MetricsRegistry& registry) {
     auto start_session=chrono::steady_clock::now();
@@ -143,96 +144,6 @@ void function_client(int client_fd,BackendPool& pool, shared_ptr<IAlgorithm>algo
     registry.client_duration.record_latency(latency);
 }
 
-void validate_inputs(BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>algorithm,mutex& algorithm_mutex,DrainMonitor& monitor,MetricsRegistry& registry) {
-
-    while(true) {
-        string command;
-        getline(cin,command);
-        vector<string>command_tokens;
-        string temp="";
-        for(int i=0;i<command.length();i++) {
-            if(command[i]==' ') {
-                command_tokens.push_back(temp);
-                temp="";
-            }else{
-                temp+=command[i];
-            }
-        }
-        command_tokens.push_back(temp);
-        if(!command_tokens.empty() && command_tokens[0]!="bob") {
-            cout<<"INVALID COMMAND!!"<<endl;
-            continue;
-        }
-        if(command_tokens.size()>2 && command_tokens[1]=="drain") {
-            pool.drain_backend(command_tokens[2],stoi(command_tokens[3]));
-            pool.list_backend();
-        }else if(command_tokens.size()>1 && command_tokens[1]=="info") {
-            Config config=ConfigLoader::load(toml_file);
-            vector<double>backend_percentiles=registry.backend_connection_latency.estimate_percentiles();
-            vector<double>client_session_percentiles=registry.client_duration.estimate_percentiles();
-
-            cout<<endl;
-            cout<<"----------------------------------------------------------------------"<<endl;
-            cout<<"[ CONNECTION METRICS ]"<<endl;
-            cout<<"TOTAL CONNECTIONS: "<<registry.get_total_connections()<<endl;
-            cout<<"ACTIVE CONNECTIONS: "<<registry.get_active_connections()<<endl;
-            cout<<"TOTAL ERRORS: "<<registry.get_total_errors()<<endl;
-            cout<<"ALGORITHM: "<<config.algorithm<<endl;
-            cout<<endl;
-
-            cout<<"----------------------------------------------------------------------"<<endl;
-            cout<<"[ LATENCY METRICS]"<<endl;
-            cout<<"Client Session Duration:"<<endl;
-            cout<<"P50: "<<"     "<<client_session_percentiles[0]<<" ms"<<endl;
-            cout<<"P95: "<<"     "<<client_session_percentiles[1]<<" ms"<<endl;
-            cout<<"P99: "<<"     "<<client_session_percentiles[2]<<" ms"<<endl;
-            cout<<endl;
-
-            cout<<"Backend Connection Latency:"<<endl;
-            cout<<"P50: "<<"     "<<backend_percentiles[0]<<" ms"<<endl;
-            cout<<"P95: "<<"     "<<backend_percentiles[1]<<" ms"<<endl;
-            cout<<"P99: "<<"     "<<backend_percentiles[2]<<" ms"<<endl;
-            cout<<endl;
-
-            cout<<"----------------------------------------------------------------------"<<endl;
-            cout<<"[ BACKEND POOL ]"<<endl;
-            pool.list_backend();
-        }else if(command_tokens.size()>1 && command_tokens[1]=="reload") {
-            Config new_config=ConfigLoader::load(toml_file);
-
-            pool.update_backends(new_config.backends);
-            cout<<"NEW BACKENDS WERE KEPT INTO IMPLEMENTATION!!"<<endl;
-            monitor.update_drainout_time(new_config.drainout_time);
-            cout<<"DRAINOUT TIME UPDATED!"<<endl;
-
-            shared_ptr<IAlgorithm>new_algorithm;
-            if(new_config.algorithm=="Round Robin") {
-                new_algorithm=make_shared<RoundRobin>();
-            }else if(new_config.algorithm=="Weighted Round Robin") {
-                new_algorithm=make_shared<WeightedRR>();
-            }else if(new_config.algorithm=="Random") {
-                new_algorithm=make_shared<Random>();
-            }else if(new_config.algorithm=="Ip Hash") {
-                new_algorithm=make_shared<IpHash>();
-            }else if(new_config.algorithm=="Least Connections") {
-                new_algorithm=make_shared<LeastConnections>();
-            }
-
-            if(new_algorithm) {
-                lock_guard<mutex>lock(algorithm_mutex);
-                algorithm=new_algorithm;
-                cout<<"ALGORITHM RELOADED SUCCESSFULLY"<<endl;
-            }else{
-                cout<<"INVALID ALGORITHM"<<endl;
-            }
-
-        }else{
-            cout<<"INVALID COMMAND!!"<<endl;
-            continue;
-        }
-    }
-}
-
 int main() {
 
     Config config=ConfigLoader::load("config/lb.toml");
@@ -273,8 +184,8 @@ int main() {
         algorithm=make_shared<LeastConnections>();
     }
 
-    thread command_inputs(validate_inputs,ref(pool),"config/lb.toml",ref(algorithm),ref(algorithm_mutex),ref(monitor),ref(registry));
-    command_inputs.detach();
+    ControlServer control("/tmp/lb-control.sock",ref(pool),"config/lb.toml",ref(algorithm),ref(algorithm_mutex),ref(monitor),ref(registry));
+    control.start();
 
     TcpListener server;
     
@@ -338,5 +249,6 @@ int main() {
 
     monitor.stop();
     checker.stop();
+    control.stop();
     return 0;
 }

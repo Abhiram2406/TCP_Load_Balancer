@@ -1,5 +1,6 @@
 #include "BackendPool.hpp"
 #include<map>
+#include <sstream>
 
 void BackendPool::add_backend(const Backend& backend) {
     lock_guard<mutex>lock(pool_mutex);
@@ -15,11 +16,12 @@ void BackendPool::remove_backend(const string& ip,int port_no) {
         }
     }
 }
-void BackendPool::list_backend() {
+string BackendPool::list_backend() {
+    ostringstream response;
     lock_guard<mutex>lock(pool_mutex);
-    cout<<"----------------------------------------------------------------------"<<endl;
-    cout<<"HOST_NAME"<<" | "<<"PORT"<<" | "<<"STATE    "<<" | "<<"ACTIVE CONNECTIONS"<<" | "<<"WEIGHT"<<endl;
-    cout<<"----------------------------------------------------------------------"<<endl;
+    response<<"----------------------------------------------------------------------"<<endl;
+    response<<"HOST_NAME"<<" | "<<"PORT"<<" | "<<"STATE    "<<" | "<<"ACTIVE CONNECTIONS"<<" | "<<"WEIGHT"<<endl;
+    response<<"----------------------------------------------------------------------"<<endl;
     for(const auto &backend : pool) {
         string situation;
         switch (backend.health_machine.get_state()) {
@@ -38,9 +40,11 @@ void BackendPool::list_backend() {
                 situation = "SUSPECTED";
                 break;
         }
-        cout<<backend.host<<" | "<<backend.port<<" | "<<situation<<" | "<<backend.active_connections<<"                  | "<<backend.weight<<endl;
+        response<<backend.host<<" | "<<backend.port<<" | "<<situation<<" | "<<backend.active_connections<<"                  | "<<backend.weight<<endl;
     }
-    cout<<"----------------------------------------------------------------------"<<endl;
+    response<<"----------------------------------------------------------------------"<<endl;
+
+    return response.str();
 }
 void BackendPool::drain_backend(const string& h,int p) {
     lock_guard<mutex>lock(pool_mutex);

@@ -33,6 +33,7 @@ add_executable(load_balancer
     src/balancer/DrainMonitor.cpp
     src/metrics/MetricsRegistry.cpp
     src/metrics/Histogram.cpp
+    src/control/ControlServer.cpp
 )
 
 target_link_libraries(load_balancer PRIVATE tomlplusplus::tomlplusplus)
