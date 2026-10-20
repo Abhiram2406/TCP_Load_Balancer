@@ -28,6 +28,6 @@ class BackendPool {
     void add_backend(const Backend& backend);
     void remove_backend(const string& host,int port);
     string list_backend();
-    void drain_backend(const string& host, int port);
+    void drain_backend(const string& host, int port,bool sure);
     void update_backends(const vector<BackendConfig>&backends);
 };

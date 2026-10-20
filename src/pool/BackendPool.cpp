@@ -10,7 +10,7 @@ void BackendPool::remove_backend(const string& ip,int port_no) {
     lock_guard<mutex>lock(pool_mutex);
     for(int i=0;i<pool.size();i++) {
         if(pool[i].host==ip && pool[i].port==port_no) {
-            pool[i].drain();
+            pool[i].drain(true);
             pool[i].remove_after_drain=true;
             return;
         }
@@ -46,12 +46,16 @@ string BackendPool::list_backend() {
 
     return response.str();
 }
-void BackendPool::drain_backend(const string& h,int p) {
+void BackendPool::drain_backend(const string& h,int p,bool sure) {
     lock_guard<mutex>lock(pool_mutex);
     for(auto &backend: pool) {
         if(backend.host==h && backend.port==p) {
-            backend.drain();
-            cout<<"BACKEND DRAINED SUCCESSFULLY."<<endl;
+            if(sure) {
+                backend.drain(true);
+                cout<<"BACKEND DRAINED SUCCESSFULLY."<<endl;
+            }else{
+                backend.drain(false);
+            }
             return;
         }
     }
@@ -75,7 +79,7 @@ void BackendPool::update_backends(const vector<BackendConfig>&backends) {
     }
     for(size_t i=0;i<check.size();i++) {
         if(!check[i]) {
-            pool[i].drain();
+            pool[i].drain(true);
             pool[i].remove_after_drain=true;
         }
     }

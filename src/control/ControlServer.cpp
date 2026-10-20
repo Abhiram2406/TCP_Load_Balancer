@@ -105,9 +105,47 @@ string ControlServer::process_command(string command) {
             return response.str();
         }
         if(command_tokens.size()>2 && command_tokens[1]=="drain") {
-            pool.drain_backend(command_tokens[2],stoi(command_tokens[3]));
+            pool.drain_backend(command_tokens[2],stoi(command_tokens[3]),true);
             pool.list_backend();
             return response.str();
+        }else if(command_tokens.size()>2 && command_tokens[1]=="undrain") {
+            pool.drain_backend(command_tokens[2],stoi(command_tokens[3]),false);
+        }else if(command_tokens.size()>1 && command_tokens[1]=="status") {
+            response<<"----------------------------------------------------------------------"<<endl;
+            response<<"[ BACKEND POOL ]"<<endl;
+            response<<pool.list_backend();
+            return response.str();
+        }else if(command_tokens.size()>1 && command_tokens[1]=="stats") {
+            vector<double>backend_percentiles=registry.backend_connection_latency.estimate_percentiles();
+            vector<double>client_session_percentiles=registry.client_duration.estimate_percentiles();
+
+            response<<endl;
+            response<<"----------------------------------------------------------------------"<<endl;
+            response<<"[ CONNECTION METRICS ]"<<endl;
+            response<<"TOTAL CONNECTIONS: "<<registry.get_total_connections()<<endl;
+            response<<"ACTIVE CONNECTIONS: "<<registry.get_active_connections()<<endl;
+            response<<"TOTAL ERRORS: "<<registry.get_total_errors()<<endl;
+            response<<endl;
+
+            response<<"----------------------------------------------------------------------"<<endl;
+            response<<"[ LATENCY METRICS]"<<endl;
+            response<<"Client Session Duration:"<<endl;
+            response<<"P50: "<<"     "<<client_session_percentiles[0]<<" ms"<<endl;
+            response<<"P95: "<<"     "<<client_session_percentiles[1]<<" ms"<<endl;
+            response<<"P99: "<<"     "<<client_session_percentiles[2]<<" ms"<<endl;
+            response<<endl;
+
+            response<<"Backend Connection Latency:"<<endl;
+            response<<"P50: "<<"     "<<backend_percentiles[0]<<" ms"<<endl;
+            response<<"P95: "<<"     "<<backend_percentiles[1]<<" ms"<<endl;
+            response<<"P99: "<<"     "<<backend_percentiles[2]<<" ms"<<endl;
+            response<<endl;
+
+            response<<"----------------------------------------------------------------------"<<endl;
+        }else if(command_tokens.size()>2 && command_tokens[1]=="add") {
+            pool.add_backend(Backend(command_tokens[2],stoi(command_tokens[3]),stoi(command_tokens[4])));
+        }else if(command_tokens.size()>2 && command_tokens[1]=="remove") {
+            pool.remove_backend(command_tokens[2],stoi(command_tokens[3]));
         }else if(command_tokens.size()>1 && command_tokens[1]=="info") {
             Config config=ConfigLoader::load(toml_file);
             vector<double>backend_percentiles=registry.backend_connection_latency.estimate_percentiles();

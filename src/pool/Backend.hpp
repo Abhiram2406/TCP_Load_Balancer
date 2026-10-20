@@ -37,5 +37,5 @@ struct Backend {
         }
         return *this;
     }
-    void drain();
+    void drain(bool sure);
 };

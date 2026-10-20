@@ -35,5 +35,6 @@ add_executable(load_balancer
     src/metrics/Histogram.cpp
     src/control/ControlServer.cpp
 )
+add_executable(lb-cli src/cli/main.cpp)
 
 target_link_libraries(load_balancer PRIVATE tomlplusplus::tomlplusplus)
