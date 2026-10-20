@@ -15,3 +15,6 @@ Backend* Random::pick_backend(BackendPool& pool,const string& client_ip) {
 
     return &pool.pool[store[random_idx]];
 }
+string Random::get_name() {
+    return "Random";
+}

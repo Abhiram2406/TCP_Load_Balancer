@@ -21,3 +21,6 @@ Backend* LeastConnections::pick_backend(BackendPool& pool,const string& client_i
 
     return &pool.pool[store.back()];
 }
+string LeastConnections::get_name() {
+    return "Least Connections";
+}

@@ -39,3 +39,15 @@ void HealthChecker::start() {
 void HealthChecker::stop() {
     running=false;
 }
+void HealthChecker::force_check() {
+    if(running) {
+        return;
+    }
+    thread checker_thread([this]() {
+        for(auto &backend : pool.pool) {
+            if(backend.health_machine.get_state()!=HealthState::DRAINING)
+            check_backend(backend);
+        }
+    });
+    checker_thread.detach();
+}

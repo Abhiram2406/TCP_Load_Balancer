@@ -14,3 +14,6 @@ Backend* RoundRobin::pick_backend(BackendPool& pool_array,const string& client_i
 
     return nullptr;
 }
+string RoundRobin::get_name() {
+    return "Round Robin";
+}

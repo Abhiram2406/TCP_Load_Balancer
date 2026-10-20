@@ -1,7 +1,7 @@
 #include "ControlServer.hpp"
 #include "../config/ConfigLoader.hpp"
 #include <sstream>
-ControlServer::ControlServer(string path,BackendPool& p,string file,shared_ptr<IAlgorithm>a,mutex& am,DrainMonitor& m,MetricsRegistry& r):pool(p),socket_path(path),toml_file(file),algorithm(a),algorithm_mutex(am),monitor(m),registry(r) {}
+ControlServer::ControlServer(string path,BackendPool& p,string file,shared_ptr<IAlgorithm>&a,mutex& am,DrainMonitor& m,MetricsRegistry& r):pool(p),socket_path(path),toml_file(file),algorithm(a),algorithm_mutex(am),monitor(m),registry(r) {}
 
 ControlServer::~ControlServer() {
     stop();
@@ -157,7 +157,7 @@ string ControlServer::process_command(string command) {
             response<<"TOTAL CONNECTIONS: "<<registry.get_total_connections()<<endl;
             response<<"ACTIVE CONNECTIONS: "<<registry.get_active_connections()<<endl;
             response<<"TOTAL ERRORS: "<<registry.get_total_errors()<<endl;
-            response<<"ALGORITHM: "<<config.algorithm<<endl;
+            response<<"ALGORITHM: "<<algorithm->get_name()<<endl;
             response<<endl;
 
             response<<"----------------------------------------------------------------------"<<endl;
@@ -177,6 +177,28 @@ string ControlServer::process_command(string command) {
             response<<"----------------------------------------------------------------------"<<endl;
             response<<"[ BACKEND POOL ]"<<endl;
             response<<pool.list_backend();
+            return response.str();
+        }else if(command_tokens.size()>2 && command_tokens[1]=="set") {
+            shared_ptr<IAlgorithm>new_algorithm;
+            if(command_tokens[2]=="RoundRobin") {
+                new_algorithm=make_shared<RoundRobin>();
+            }else if(command_tokens[2]=="WeightedRoundRobin") {
+                new_algorithm=make_shared<WeightedRR>();
+            }else if(command_tokens[2]=="Random") {
+                new_algorithm=make_shared<Random>();
+            }else if(command_tokens[2]=="IpHash") {
+                new_algorithm=make_shared<IpHash>();
+            }else if(command_tokens[2]=="LeastConnections") {
+                new_algorithm=make_shared<LeastConnections>();
+            }
+
+            if(new_algorithm) {
+                lock_guard<mutex>lock(algorithm_mutex);
+                algorithm=new_algorithm;
+                response<<"ALGORITHM RELOADED SUCCESSFULLY"<<endl;
+            }else{
+                response<<"INVALID ALGORITHM"<<endl;
+            }
             return response.str();
         }else if(command_tokens.size()>1 && command_tokens[1]=="reload") {
             Config new_config=ConfigLoader::load(toml_file);

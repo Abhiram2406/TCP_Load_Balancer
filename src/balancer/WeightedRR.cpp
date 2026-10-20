@@ -24,3 +24,6 @@ Backend* WeightedRR::pick_backend(BackendPool& pool,const string& client_ip) {
 
     return nullptr;
 }
+string WeightedRR::get_name() {
+    return "Weighted Round Robin";
+}

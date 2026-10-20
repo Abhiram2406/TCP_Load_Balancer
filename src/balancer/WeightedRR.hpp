@@ -7,4 +7,5 @@ class WeightedRR : public IAlgorithm {
     atomic<int>current_usage{0};
     public:
     Backend* pick_backend(BackendPool& pool,const string& client_ip) override;
+    string get_name() override;
 };

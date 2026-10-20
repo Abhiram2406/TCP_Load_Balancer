@@ -12,4 +12,5 @@ class HealthChecker {
     void check_backend(Backend& backend);
     void start();
     void stop();
+    void force_check();
 };

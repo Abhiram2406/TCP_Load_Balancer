@@ -16,3 +16,6 @@ Backend* IpHash::pick_backend(BackendPool& pool, const string& client_ip) {
 
     return &pool.pool[store[hash_idx]];
 }
+string IpHash::get_name() {
+    return "Ip Hash";
+}

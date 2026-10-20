@@ -24,7 +24,7 @@ class ControlServer {
     atomic<bool>running{false};
     int server_fd=-1;
     public:
-    ControlServer(string path,BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>algorithm,mutex& algorithm_mutex,DrainMonitor& monitor,MetricsRegistry& registry);
+    ControlServer(string path,BackendPool& pool,string toml_file,shared_ptr<IAlgorithm>&algorithm,mutex& algorithm_mutex,DrainMonitor& monitor,MetricsRegistry& registry);
     ~ControlServer();
     void start();
     void stop();

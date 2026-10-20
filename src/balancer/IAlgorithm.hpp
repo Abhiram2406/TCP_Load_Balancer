@@ -5,4 +5,5 @@ class IAlgorithm {
     public:
     virtual Backend* pick_backend(BackendPool& pool,const string& client_ip)=0;
     virtual ~IAlgorithm()=default;
+    virtual string get_name()=0;
 };
