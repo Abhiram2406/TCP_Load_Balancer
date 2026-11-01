@@ -2,3 +2,8 @@ build/
 .vscode/
 *.o
 *.out
+epoll_server
+src/net/EpollConnection.hpp
+src/net/EpollManager.cpp
+src/net/EpollManager.hpp
+tests/epoll_test_main.cpp

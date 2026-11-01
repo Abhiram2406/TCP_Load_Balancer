@@ -19,3 +19,6 @@ int TcpListener::accept_client(sockaddr* address,socklen_t* length) {
     int client_fd=accept(server_fd,address,length);
     return client_fd;
 }
+int TcpListener::get_fd() {
+    return server_fd;
+}

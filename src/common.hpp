@@ -13,5 +13,7 @@
 #include <stdexcept>
 #include <utility>
 #include <memory>
+#include <fcntl.h>
+#include <sys/epoll.h>
 
 using namespace std;

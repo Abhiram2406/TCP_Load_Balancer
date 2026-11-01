@@ -15,9 +15,13 @@ void ConnectionRegistry::unregister_connection(int c_fd,int b_fd) {
     }
 }
 void ConnectionRegistry::shutdown_all_connections() {
-    lock_guard<mutex> lock(connections_mutex);
-
-    for (const auto& conn : connections) {
+    vector<ConnectionInfo> active_connections;
+    {
+        lock_guard<mutex> lock(connections_mutex);
+        active_connections = connections;
+        connections.clear();
+    }
+    for (const auto& conn : active_connections) {
         if (conn.client_fd >= 0) {
             shutdown(conn.client_fd, SHUT_RDWR);
         }
@@ -25,7 +29,6 @@ void ConnectionRegistry::shutdown_all_connections() {
         if (conn.backend_fd >= 0) {
             shutdown(conn.backend_fd, SHUT_RDWR);
         }
-        unregister_connection(conn.client_fd,conn.backend_fd);
     }
 }
 size_t ConnectionRegistry::get_active_count() {
