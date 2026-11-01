@@ -1,0 +1,120 @@
+# C++ LAYER 4 LOAD BALANCER
+## TESTING AND MEASUREMENT NOTES
+
+### 1. TEST ENVIRONMENT
+
+- Operating environment: Ubuntu 24.04 under WSL2
+- Compiler: GCC 13.3
+- Build system: CMake
+- Language: C++
+- Backend test servers: Python TCP echo servers
+- Client test utility: Custom Python TCP client
+- Load balancer port: 2424
+- Backend ports: 9001, 9002, 9003
+
+Three Python TCP backend servers were used. Each backend identifies itself in its response, making it possible to observe which backend handled each client connection.
+
+### 2. LOAD-BALANCING ALGORITHM VERIFICATION
+
+Weighted Round Robin configuration:
+
+- Backend 1 weight: 1
+- Backend 2 weight: 2
+- Backend 3 weight: 3
+
+Tested with 600 client connections.
+
+**Observed distribution:**
+
+| Backend | Connections |
+|---|---:|
+| Backend 1 | 100 |
+| Backend 2 | 200 |
+| Backend 3 | 300 |
+| **Total** | **600** |
+
+This matches the configured 1:2:3 weight ratio.
+
+### 3. CONCURRENT CONNECTION TESTING
+
+The custom Python client uses `concurrent.futures.ThreadPoolExecutor` to create multiple client workers. Each worker establishes a TCP connection to the load balancer, sends a message, receives a response, and closes the connection.
+
+**Recorded results:**
+
+| Total Clients | Successful | Failed | Time Taken |
+|---:|---:|---:|---:|
+| 100 | 100 | 0 | 0.066 sec |
+| 600 | 600 | 0 | 1.199 sec |
+| 1000 | 1000 | 0 | 14.894 sec |
+| 2500 | 2500 | 0 | 13.304 sec |
+| 3000 | 3000 | 0 | Not recorded |
+
+Backend distribution for 1000 clients:
+
+- Backend 1: 331
+- Backend 2: 309
+- Backend 3: 360
+
+Backend distribution for 2500 clients:
+
+- Backend 1: 842
+- Backend 2: 832
+- Backend 3: 826
+
+Note: The recorded durations are total test execution times, not isolated TCP handshake or connection-establishment latencies.
+
+### 4. BACKEND HEALTH TEST
+
+A backend was stopped while the load balancer and the other backends continued running.
+
+New client connections were routed to the remaining healthy backends. After the stopped backend was restarted and became healthy again, it became eligible to receive connections.
+
+### 5. RUNTIME ALGORITHM AND CONFIGURATION TEST
+
+Runtime algorithm switching and TOML reload were tested through the control interface.
+
+### 6. THREAD AND MEMORY OBSERVATIONS
+
+During the 2500-client test, the following load-balancer process measurements were captured:
+
+- Threads: 2504
+- VmRSS: 27008 kB
+- VmSize: 28845500 kB
+- VmPeak: 28845500 kB
+
+After the client sessions completed, a later measurement showed:
+
+- Threads: 4
+- VmRSS: 8960 kB
+
+The thread count returned close to the application's background thread count after the client-handler threads finished.
+
+**Definitions:**
+
+- Threads: Number of threads belonging to the process.
+- VmRSS: Resident memory currently held in physical RAM.
+- VmSize: Virtual address space used by the process.
+- VmPeak: Peak virtual address space recorded for the process.
+
+VmSize and VmPeak represent virtual address space, not physical RAM consumption.
+
+### 7. CPU OBSERVATIONS
+
+During the 2500-client test, CPU activity increased across most of the logical CPU meters shown by htop. The observed per-CPU utilization was approximately 33% at the time it was checked.
+
+This was a visual observation from htop and was not an isolated measurement of load-balancer-only CPU usage.
+
+### 8. TOOLS USED
+
+- Python socket module for TCP backend and client utilities.
+- Python concurrent.futures for concurrent client workers.
+- htop for CPU, memory and process observation.
+- `/proc/<PID>/status` for process thread and memory information.
+- ss for TCP connection inspection.
+- ps for process and thread inspection.
+
+### 9. SUMMARY
+
+The load balancer was tested with three local TCP backends and successfully handled a test run of 3000 concurrent client connections, with 3000 successful responses and zero failed clients.
+
+Weighted Round Robin was verified against a 1:2:3 backend weight configuration using 600 connections. Backend health behavior, runtime algorithm switching, configuration reload, and thread cleanup were also exercised during testing.

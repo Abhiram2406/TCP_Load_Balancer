@@ -172,15 +172,15 @@ int main() {
     LeastConnections lc;
     IpHash ih;
 
-    if(config.algorithm=="Round Robin") {
+    if(config.algorithm=="Round_Robin") {
         algorithm=make_shared<RoundRobin>();
-    }else if(config.algorithm=="Weighted Round Robin") {
+    }else if(config.algorithm=="Weighted_Round_Robin") {
         algorithm=make_shared<WeightedRR>();
     }else if(config.algorithm=="Random") {
         algorithm=make_shared<Random>();
-    }else if(config.algorithm=="Ip Hash") {
+    }else if(config.algorithm=="Ip_Hash") {
         algorithm=make_shared<IpHash>();
-    }else if(config.algorithm=="Least Connections") {
+    }else if(config.algorithm=="Least_Connections") {
         algorithm=make_shared<LeastConnections>();
     }
 
@@ -239,6 +239,8 @@ int main() {
         {
             lock_guard<mutex>lock(algorithm_mutex);
             selected_algorithm=algorithm;
+            cout << "Algorithm used for new connection: "
+         << selected_algorithm->get_name() << endl;
         }
 
         

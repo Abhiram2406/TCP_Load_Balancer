@@ -151,13 +151,19 @@ string ControlServer::process_command(string command) {
             vector<double>backend_percentiles=registry.backend_connection_latency.estimate_percentiles();
             vector<double>client_session_percentiles=registry.client_duration.estimate_percentiles();
 
+            shared_ptr<IAlgorithm> current_algorithm;
+            {
+                lock_guard<mutex> lock(algorithm_mutex);
+                current_algorithm = algorithm;
+            }
+
             response<<endl;
             response<<"----------------------------------------------------------------------"<<endl;
             response<<"[ CONNECTION METRICS ]"<<endl;
             response<<"TOTAL CONNECTIONS: "<<registry.get_total_connections()<<endl;
             response<<"ACTIVE CONNECTIONS: "<<registry.get_active_connections()<<endl;
             response<<"TOTAL ERRORS: "<<registry.get_total_errors()<<endl;
-            response<<"ALGORITHM: "<<algorithm->get_name()<<endl;
+            response<<"ALGORITHM: "<<current_algorithm->get_name()<<endl;
             response<<endl;
 
             response<<"----------------------------------------------------------------------"<<endl;
@@ -180,15 +186,15 @@ string ControlServer::process_command(string command) {
             return response.str();
         }else if(command_tokens.size()>2 && command_tokens[1]=="set") {
             shared_ptr<IAlgorithm>new_algorithm;
-            if(command_tokens[2]=="RoundRobin") {
+            if(command_tokens[2]=="Round_Robin") {
                 new_algorithm=make_shared<RoundRobin>();
-            }else if(command_tokens[2]=="WeightedRoundRobin") {
+            }else if(command_tokens[2]=="Weighted_Round_Robin") {
                 new_algorithm=make_shared<WeightedRR>();
             }else if(command_tokens[2]=="Random") {
                 new_algorithm=make_shared<Random>();
-            }else if(command_tokens[2]=="IpHash") {
+            }else if(command_tokens[2]=="Ip_Hash") {
                 new_algorithm=make_shared<IpHash>();
-            }else if(command_tokens[2]=="LeastConnections") {
+            }else if(command_tokens[2]=="Least_Connections") {
                 new_algorithm=make_shared<LeastConnections>();
             }
 
@@ -202,6 +208,7 @@ string ControlServer::process_command(string command) {
             return response.str();
         }else if(command_tokens.size()>1 && command_tokens[1]=="reload") {
             Config new_config=ConfigLoader::load(toml_file);
+            cout << "Algorithm from TOML: [" << new_config.algorithm << "]" << endl;
 
             pool.update_backends(new_config.backends);
             response<<"NEW BACKENDS WERE KEPT INTO IMPLEMENTATION!!"<<endl;
@@ -209,21 +216,25 @@ string ControlServer::process_command(string command) {
             response<<"DRAINOUT TIME UPDATED!"<<endl;
 
             shared_ptr<IAlgorithm>new_algorithm;
-            if(new_config.algorithm=="Round Robin") {
+            if(new_config.algorithm=="Round_Robin") {
                 new_algorithm=make_shared<RoundRobin>();
-            }else if(new_config.algorithm=="Weighted Round Robin") {
+            }else if(new_config.algorithm=="Weighted_Round_Robin") {
                 new_algorithm=make_shared<WeightedRR>();
             }else if(new_config.algorithm=="Random") {
                 new_algorithm=make_shared<Random>();
-            }else if(new_config.algorithm=="Ip Hash") {
+            }else if(new_config.algorithm=="Ip_Hash") {
                 new_algorithm=make_shared<IpHash>();
-            }else if(new_config.algorithm=="Least Connections") {
+            }else if(new_config.algorithm=="Least_Connections") {
                 new_algorithm=make_shared<LeastConnections>();
             }
 
             if(new_algorithm) {
+                cout << "New algorithm created: "
+                    << new_algorithm->get_name() << endl;
+
                 lock_guard<mutex>lock(algorithm_mutex);
                 algorithm=new_algorithm;
+
                 response<<"ALGORITHM RELOADED SUCCESSFULLY"<<endl;
             }else{
                 response<<"INVALID ALGORITHM"<<endl;

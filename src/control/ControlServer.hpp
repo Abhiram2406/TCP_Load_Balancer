@@ -17,7 +17,7 @@ class ControlServer {
     thread server_thread;
     BackendPool& pool;
     string toml_file;
-    shared_ptr<IAlgorithm>algorithm;
+    shared_ptr<IAlgorithm>&algorithm;
     mutex& algorithm_mutex;
     DrainMonitor& monitor;
     MetricsRegistry& registry;

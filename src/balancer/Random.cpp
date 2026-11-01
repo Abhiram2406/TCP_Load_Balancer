@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 Backend* Random::pick_backend(BackendPool& pool,const string& client_ip) {
+    cout<<"Random algorithm called"<<endl;
     vector<size_t>store;
     for(size_t i=0;i<pool.pool.size();i++) {
         if(pool.pool[i].health_machine.get_state()==HealthState::HEALTHY) {

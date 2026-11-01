@@ -1,6 +1,7 @@
 #include "WeightedRR.hpp"
 
 Backend* WeightedRR::pick_backend(BackendPool& pool,const string& client_ip) {
+    lock_guard<mutex>lock(mtx);
     if (pool.pool.empty()) {
         return nullptr;
     }
@@ -15,7 +16,7 @@ Backend* WeightedRR::pick_backend(BackendPool& pool,const string& client_ip) {
     for(size_t i=0;i<pool.pool.size();i++) {
         size_t idx=(start+i)%pool.pool.size();
         if(pool.pool[idx].health_machine.get_state()==HealthState::HEALTHY) {
-            current_index+=i;
+            current_index=idx;
             if(i!=0) current_usage=1;
             else current_usage++;
             return &pool.pool[idx];
