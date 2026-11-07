@@ -1,4 +1,5 @@
 # C++ Layer 4 Load Balancer
+[![Docker Hub](https://img.shields.io/docker/v/24abhiram/cpp-load-balancer?label=Docker%20Hub)](https://hub.docker.com/r/24abhiram/cpp-load-balancer)
 
 A configurable Layer 4 (TCP) load balancer built in C++ using Linux/POSIX sockets. It accepts client TCP connections, selects a backend using a configurable algorithm, and forwards data between the client and the selected backend.
 
@@ -121,6 +122,43 @@ weight = 3
 - C++ compiler with C++17 support.
 - CMake.
 - Python 3 for the TCP client test utility.
+
+## Docker Image
+
+The load balancer is available as a Docker image on Docker Hub.
+
+**Docker Hub:** [24abhiram/cpp-load-balancer](https://hub.docker.com/r/24abhiram/cpp-load-balancer)
+
+### Pull the Image
+
+```bash
+docker pull 24abhiram/cpp-load-balancer:v1
+```
+
+### Run the Container
+
+```bash
+docker run -d \
+  --name my-load-balancer \
+  -p 2424:2424 \
+  24abhiram/cpp-load-balancer:v1
+```
+
+### Check Container Status
+
+```bash
+docker ps
+```
+
+### View Container Logs
+
+```bash
+docker logs my-load-balancer
+```
+
+The container exposes TCP port `2424` for incoming client connections.
+
+Backend servers must be reachable from the container, and the backend addresses should be configured accordingly.
 
 ### Build Commands
 
